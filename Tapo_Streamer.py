@@ -59,7 +59,7 @@ def open_window(user_id: str, user_pw: str, row_col: dict, hosts:dict) -> None:
                 for host in hosts.values():
                     if host != "":
                         print(f"Connecting to {host}...")
-                        clients[host] = rtsp.Client(rtsp_server_uri=rtsp_urls[host], verbose=True)
+                        clients[host] = rtsp.Client(rtsp_server_uri=rtsp_urls[host])
                         is_streaming = True
         elif event == "-disconnect-":
             if is_streaming is True:
@@ -79,7 +79,7 @@ def open_window(user_id: str, user_pw: str, row_col: dict, hosts:dict) -> None:
                         window[f"image-{host}"].update(data=ImageTk.PhotoImage(frame))
                     except:
                         print(f"Reconnecting to {host}...")
-                        clients[host] = rtsp.Client(rtsp_server_uri=rtsp_urls[host], verbose=True)
+                        clients[host] = rtsp.Client(rtsp_server_uri=rtsp_urls[host])
     window.close()
 
 def validate_ip(ip: str) -> bool:
