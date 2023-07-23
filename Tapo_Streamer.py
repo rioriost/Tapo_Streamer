@@ -42,46 +42,44 @@ APP_NAME = "Tapo_Streamer"
 # main procedure
 def open_window(user_id: str, user_pw: str, row_col: dict, hosts:dict) -> None:
     layout = [
-        [[sg.Image(filename='', key=f"image{row}-{col}") for col in range(row_col["col"])] for row in range(row_col["row"])],
+        [[sg.Image(filename='', key="image-{}".format(hosts[f"stream{row}-{col}"])) for col in range(row_col["col"])] for row in range(row_col["row"])],
         [sg.Button('Connect', size=(10, 1), key ='-connect-'),
          sg.Button('Disconnect', size=(10, 1), key = '-disconnect-')]
          ]
     is_streaming = False
-    window = sg.Window('Tapo Camera', layout, location=(32, 32), finalize=True, element_justification='center', font='Helvetica 18')
-    clients = {f"{row}-{col}": None for row in range(row_col["row"]) for col in range(row_col["col"])}
+    window = sg.Window('Tapo Camera', layout, location=(32, 32), finalize=True, element_justification='left', font='Helvetica 18')
+    clients = {f"{host}": None for host in hosts.values() if host != ""}
+    rtsp_urls = {f"{host}": f"rtsp://{user_id}:{user_pw}@{host}:554/stream2" for host in hosts.values() if host != ""}
     while True:
         event, values = window.read(timeout=1)
         if event == sg.WIN_CLOSED:
             break
         elif event == "-connect-":
             if is_streaming is False:
-                for row in range(row_col["row"]):
-                    for col in range(row_col["col"]):
-                        host = hosts[f"stream{row}-{col}"]
-                        if host != "":
-                            print(f"Connecting to {host}...")
-                            rtsp_url = f"rtsp://{user_id}:{user_pw}@{host}:554/stream2"
-                            clients[f"{row}-{col}"] = rtsp.Client(rtsp_server_uri=rtsp_url)
-                            is_streaming = True
+                for host in hosts.values():
+                    if host != "":
+                        print(f"Connecting to {host}...")
+                        clients[host] = rtsp.Client(rtsp_server_uri=rtsp_urls[host], verbose=True)
+                        is_streaming = True
         elif event == "-disconnect-":
             if is_streaming is True:
                 is_streaming = False
-                for row in range(row_col["row"]):
-                    for col in range(row_col["col"]):
-                        host = hosts[f"stream{row}-{col}"]
-                        if host != "":
-                            clients[f"{row}-{col}"].close()
-                            img = Image.new('RGB', (640, 480), color=0)
-                            window[f"image{row}-{col}"].update(data=ImageTk.PhotoImage(img))
-        if is_streaming is True:
-            for row in range(row_col["row"]):
-                for col in range(row_col["col"]):
-                    host = hosts[f"stream{row}-{col}"]
+                for host in hosts.values():
                     if host != "":
-                        frame = clients[f"{row}-{col}"].read()
-                        if frame is not None:
-                            window[f"image{row}-{col}"].update(data=ImageTk.PhotoImage(frame))
-
+                        print(f"Disconnecting to {host}...")
+                        clients[host].close()
+                        clients[host] = None
+                        img = Image.new('RGB', (640, 480), color=0)
+                        window[f"image-{host}"].update(data=ImageTk.PhotoImage(img))
+        if is_streaming is True:
+            for host in hosts.values():
+                if host != "":
+                    try:
+                        frame = clients[host].read()
+                        window[f"image-{host}"].update(data=ImageTk.PhotoImage(frame))
+                    except:
+                        print(f"Reconnecting to {host}...")
+                        clients[host] = rtsp.Client(rtsp_server_uri=rtsp_urls[host], verbose=True)
     window.close()
 
 def validate_ip(ip: str) -> bool:
@@ -113,7 +111,7 @@ def input_ip_address(prompt: str) -> str:
 def init_hosts() -> None:
     config_path = pathlib.Path(f"~/Library/Preferences/{APP_NAME}/config.ini").expanduser()
     if config_path.exists() is False:
-        print("Config file not found, creating one in ~/Library/Preferences/Tapo_Streamer/config.ini")
+        print(f"Config file not found, creating one in {config_path}")
         config_path.parent.mkdir(parents=True, exist_ok=True)
         try:
             row_num = input_number("Please enter the number of rows for streams e.g. 2: ")
