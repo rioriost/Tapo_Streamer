@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 # standard library
 import configparser
 import ipaddress
@@ -56,7 +58,6 @@ def open_window(user_id: str, user_pw: str, row_col: dict, hosts:dict) -> None:
                 for row in range(row_col["row"]):
                     for col in range(row_col["col"]):
                         host = hosts[f"stream{row}-{col}"]
-                        print(host)
                         if host != "":
                             print(f"Connecting to {host}...")
                             rtsp_url = f"rtsp://{user_id}:{user_pw}@{host}:554/stream2"
